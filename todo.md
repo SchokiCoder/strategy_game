@@ -1,0 +1,10 @@
+- [x] add the biome icon to a tile's top right
+- [ ] add scrolling to world view
+- [ ] add zoom to world view
+- [ ] add team resources
+- [ ] add pathfinding
+- [ ] add procedural world generation
+- [ ] add unit movement
+- [ ] add building system
+- [ ] add combat
+- [ ] set version to 0.1.0
