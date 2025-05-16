@@ -88,6 +88,7 @@ type StratGame struct {
 	Tilesize      int
 	World         World
 	WorldImg      *ebiten.Image
+	ZoomMod       float64
 }
 
 func NewStratGame(
@@ -185,6 +186,7 @@ func (g StratGame) Draw(
 
 	opt.GeoM.Reset()
 	opt.GeoM.Translate(float64(g.ScrollX), float64(g.ScrollY))
+	opt.GeoM.Scale(1.0 + g.ZoomMod * 0.1, 1.0 + g.ZoomMod * 0.1)
 	screen.DrawImage(g.WorldImg, &opt)
 }
 
@@ -266,7 +268,9 @@ func (g *StratGame) Update(
 
 	var wX, wY = ebiten.Wheel()
 
-	if ebiten.IsKeyPressed(ebiten.KeyShift) {
+	if ebiten.IsKeyPressed(ebiten.KeyControl) {
+		g.ZoomMod += wY
+	} else if ebiten.IsKeyPressed(ebiten.KeyShift) {
 		g.ScrollX += int(wY)
 	} else {
 		g.ScrollY += int(wY)

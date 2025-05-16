@@ -9,7 +9,9 @@
 - [x] add the biome icon to a tile's top right
 - [x] add scrolling via mouse to world view
 - [x] add scrolling via mousewheel to world view
-- [ ] add zoom to world view (ctrl mwheel)
+- [x] add zoom to world view
+- [ ] adjust scroll to zoom
+- [ ] cap scroll and zoom
 - [ ] add team resources
 - [ ] add pathfinding
 - [ ] add procedural world generation
