@@ -11,8 +11,9 @@
 - [x] add scrolling via mousewheel to world view
 - [x] add zoom to world view
 - [x] add zoom awareness for scroll
-- [ ] adjust scroll and zoom
+- [x] adjust scroll and zoom
 - [ ] cap scroll and zoom
+- [ ] make zoom zoom in on cursor position
 - [ ] add team resources
 - [ ] add pathfinding
 - [ ] add procedural world generation

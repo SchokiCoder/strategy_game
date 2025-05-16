@@ -236,7 +236,10 @@ func (g StratGame) Layout(
 
 func (g *StratGame) Update(
 ) error {
-	const minForScroll = 5
+	const (
+		minDistanceForScroll = 5
+		mwheelOffsetZoomMod = 0.25
+	)
 
 	var mX, mY = ebiten.CursorPosition()
 
@@ -250,10 +253,10 @@ func (g *StratGame) Update(
 	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		diffX := g.ScrollOriginX - mX
 		diffY := g.ScrollOriginY - mY
-		if diffX >= minForScroll ||
-		   diffX <= minForScroll ||
-		   diffY >= minForScroll ||
-		   diffY <= minForScroll {
+		if diffX >= minDistanceForScroll ||
+		   diffX <= minDistanceForScroll ||
+		   diffY >= minDistanceForScroll ||
+		   diffY <= minDistanceForScroll {
 			g.Scroll = true
 		}
 	}
@@ -270,12 +273,12 @@ func (g *StratGame) Update(
 	var wX, wY = ebiten.Wheel()
 
 	if ebiten.IsKeyPressed(ebiten.KeyControl) {
-		g.Zoom += wY * 0.1
+		g.Zoom += wY * mwheelOffsetZoomMod
 	} else if ebiten.IsKeyPressed(ebiten.KeyShift) {
-		g.ScrollX += int(wY)
+		g.ScrollX += int(wY * float64(g.Tilesize))
 	} else {
-		g.ScrollY += int(wY)
-		g.ScrollX += int(wX)
+		g.ScrollY += int(wY * float64(g.Tilesize))
+		g.ScrollX += int(wX * float64(g.Tilesize))
 	}
 
 	return nil
