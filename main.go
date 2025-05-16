@@ -264,6 +264,15 @@ func (g *StratGame) Update(
 		g.Scroll = false
 	}
 
+	var wX, wY = ebiten.Wheel()
+
+	if ebiten.IsKeyPressed(ebiten.KeyShift) {
+		g.ScrollX += int(wY)
+	} else {
+		g.ScrollY += int(wY)
+		g.ScrollX += int(wX)
+	}
+
 	return nil
 }
 
