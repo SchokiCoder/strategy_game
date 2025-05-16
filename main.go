@@ -11,6 +11,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
@@ -74,11 +75,19 @@ func NewWorld(
 }
 
 type StratGame struct {
-	BiomeImg  [FieldBiomeCount]*ebiten.Image
-	TeamColor []color.Color
-	Tilesize  int
-	World     World
-	WorldImg  *ebiten.Image
+	BiomeImg      [FieldBiomeCount]*ebiten.Image
+	Scroll        bool
+	ScrollOldX    int
+	ScrollOldY    int
+	ScrollOriginX int
+	ScrollOriginY int
+	ScrollX       int
+	ScrollY       int
+	TeamColor     []color.Color
+	TerrImg       *ebiten.Image
+	Tilesize      int
+	World         World
+	WorldImg      *ebiten.Image
 }
 
 func NewStratGame(
@@ -134,20 +143,20 @@ func (g StratGame) Draw(
 	for x := 0; x < g.World.W; x++ {
 		for y := 0; y < g.World.H; y++ {
 			if g.World.Biome[x][y] != Sea {
-				g.WorldImg.Set(x, y,
+				g.TerrImg.Set(x, y,
 					g.TeamColor[g.World.Team[x][y]])
 			} else {
-				g.WorldImg.Set(x, y,
+				g.TerrImg.Set(x, y,
 					color.RGBA{R: 0, G:0, B:0, A:0})
 			}
 		}
 	}
 	opt.GeoM.Scale(float64(g.Tilesize), float64(g.Tilesize))
-	screen.DrawImage(g.WorldImg, &opt)
+	g.WorldImg.DrawImage(g.TerrImg, &opt)
 
 	for x := 0; x < g.World.W; x++ {
 		vector.StrokeLine(
-			screen,
+			g.WorldImg,
 			float32(x * g.Tilesize), 0,
 			float32(x * g.Tilesize), float32(g.World.H * g.Tilesize),
 			1,
@@ -156,7 +165,7 @@ func (g StratGame) Draw(
 	}
 	for y := 0; y < g.World.H; y++ {
 		vector.StrokeLine(
-			screen,
+			g.WorldImg,
 			0, float32(y * g.Tilesize),
 			float32(g.World.W * g.Tilesize), float32(y * g.Tilesize),
 			1,
@@ -170,9 +179,13 @@ func (g StratGame) Draw(
 			opt.GeoM.Translate(
 				float64(x * g.Tilesize + g.Tilesize / 2 - 1),
 				float64(y * g.Tilesize))
-			screen.DrawImage(g.BiomeImg[g.World.Biome[x][y]], &opt)
+			g.WorldImg.DrawImage(g.BiomeImg[g.World.Biome[x][y]], &opt)
 		}
 	}
+
+	opt.GeoM.Reset()
+	opt.GeoM.Translate(float64(g.ScrollX), float64(g.ScrollY))
+	screen.DrawImage(g.WorldImg, &opt)
 }
 
 func (g* StratGame) GenerateSkirmish(
@@ -182,7 +195,10 @@ func (g* StratGame) GenerateSkirmish(
 	)
 
 	g.World = NewWorld(w, h)
-	g.WorldImg = ebiten.NewImage(w, h)
+	g.TerrImg = ebiten.NewImage(w, h)
+	g.WorldImg = ebiten.NewImage(
+		g.Tilesize * g.World.W,
+		g.Tilesize * g.World.H)
 
 	for x := 1; x < w - 1; x++ {
 		for y := 1; y < h - 1; y++ {
@@ -217,6 +233,37 @@ func (g StratGame) Layout(
 
 func (g *StratGame) Update(
 ) error {
+	const minForScroll = 5
+
+	var mX, mY = ebiten.CursorPosition()
+
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		g.ScrollOriginX = mX
+		g.ScrollOriginY = mY
+		g.ScrollOldX = g.ScrollX
+		g.ScrollOldY = g.ScrollY
+	}
+
+	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+		diffX := g.ScrollOriginX - mX
+		diffY := g.ScrollOriginY - mY
+		if diffX >= minForScroll ||
+		   diffX <= minForScroll ||
+		   diffY >= minForScroll ||
+		   diffY <= minForScroll {
+			g.Scroll = true
+		}
+	}
+
+	if g.Scroll {
+		g.ScrollX = g.ScrollOldX + mX - g.ScrollOriginX
+		g.ScrollY = g.ScrollOldY + mY - g.ScrollOriginY
+	}
+
+	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
+		g.Scroll = false
+	}
+
 	return nil
 }
 
