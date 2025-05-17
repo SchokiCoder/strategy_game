@@ -186,8 +186,8 @@ func (g StratGame) Draw(
 	}
 
 	opt.GeoM.Reset()
-	opt.GeoM.Translate(float64(g.ScrollX), float64(g.ScrollY))
 	opt.GeoM.Scale(g.Zoom, g.Zoom)
+	opt.GeoM.Translate(float64(g.ScrollX), float64(g.ScrollY))
 	screen.DrawImage(g.WorldImg, &opt)
 }
 
@@ -240,6 +240,10 @@ func (g *StratGame) Update(
 		minDistanceForScroll = 5
 		mwheelOffsetZoomMod = 0.25
 	)
+	const (
+		maxZoom = mwheelOffsetZoomMod * 16
+		minZoom = mwheelOffsetZoomMod * 4
+	)
 
 	var mX, mY = ebiten.CursorPosition()
 
@@ -274,11 +278,28 @@ func (g *StratGame) Update(
 
 	if ebiten.IsKeyPressed(ebiten.KeyControl) {
 		g.Zoom += wY * mwheelOffsetZoomMod
+		if g.Zoom > maxZoom {
+			g.Zoom = maxZoom
+		} else if g.Zoom < minZoom {
+			g.Zoom = minZoom
+		}
 	} else if ebiten.IsKeyPressed(ebiten.KeyShift) {
 		g.ScrollX += int(wY * float64(g.Tilesize))
 	} else {
 		g.ScrollY += int(wY * float64(g.Tilesize))
 		g.ScrollX += int(wX * float64(g.Tilesize))
+	}
+
+	if g.ScrollX < int(0.0 - float64(g.World.W) * float64(g.Tilesize) * (g.Zoom - 1.0)) {
+		g.ScrollX = int(0.0 - float64(g.World.W) * float64(g.Tilesize) * (g.Zoom - 1.0))
+	} else if g.ScrollX > 0 {
+		g.ScrollX = 0
+	}
+
+	if g.ScrollY < int(0.0 - float64(g.World.H) * float64(g.Tilesize) * (g.Zoom - 1.0)) {
+		g.ScrollY = int(0.0 - float64(g.World.H) * float64(g.Tilesize) * (g.Zoom - 1.0))
+	} else if g.ScrollY > 0 {
+		g.ScrollY = 0
 	}
 
 	return nil
