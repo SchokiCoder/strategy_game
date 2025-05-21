@@ -299,14 +299,18 @@ func (g *StratGame) Update(
 		g.ScrollX += int(wX * float64(g.Tilesize))
 	}
 
-	if g.ScrollX < int(0.0 - float64(g.World.W) * float64(g.Tilesize) * (g.Zoom - 1.0)) {
-		g.ScrollX = int(0.0 - float64(g.World.W) * float64(g.Tilesize) * (g.Zoom - 1.0))
+	scrollcapX := int(float64(g.World.W) * float64(g.Tilesize) / g.Zoom -
+		float64(g.World.W) * float64(g.Tilesize))
+	if g.ScrollX < scrollcapX {
+		g.ScrollX = scrollcapX
 	} else if g.ScrollX > 0 {
 		g.ScrollX = 0
 	}
 
-	if g.ScrollY < int(0.0 - float64(g.World.H) * float64(g.Tilesize) * (g.Zoom - 1.0)) {
-		g.ScrollY = int(0.0 - float64(g.World.H) * float64(g.Tilesize) * (g.Zoom - 1.0))
+	scrollcapY := int(float64(g.World.H) * float64(g.Tilesize) / g.Zoom -
+		float64(g.World.H) * float64(g.Tilesize))
+	if g.ScrollY < scrollcapY {
+		g.ScrollY = scrollcapY
 	} else if g.ScrollY > 0 {
 		g.ScrollY = 0
 	}

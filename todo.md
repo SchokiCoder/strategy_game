@@ -14,6 +14,7 @@
 - [x] adjust scroll and zoom
 - [x] add a cap to scroll and zoom
 - [x] make zoom zoom in on view center
+- [x] update scroll cap to new GeoM manipulation order
 - [ ] make update math natively with floats
 - [ ] add team resources
 - [ ] add pathfinding
