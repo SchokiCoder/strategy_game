@@ -186,8 +186,8 @@ func (g StratGame) Draw(
 	}
 
 	opt.GeoM.Reset()
-	opt.GeoM.Scale(g.Zoom, g.Zoom)
 	opt.GeoM.Translate(float64(g.ScrollX), float64(g.ScrollY))
+	opt.GeoM.Scale(g.Zoom, g.Zoom)
 	screen.DrawImage(g.WorldImg, &opt)
 }
 
@@ -277,11 +277,20 @@ func (g *StratGame) Update(
 	var wX, wY = ebiten.Wheel()
 
 	if ebiten.IsKeyPressed(ebiten.KeyControl) {
-		g.Zoom += wY * mwheelOffsetZoomMod
-		if g.Zoom > maxZoom {
-			g.Zoom = maxZoom
-		} else if g.Zoom < minZoom {
-			g.Zoom = minZoom
+		newZoom := g.Zoom + wY * mwheelOffsetZoomMod
+		if newZoom < minZoom ||
+		   newZoom > maxZoom {
+		} else {
+			viewW := float64(g.World.W) * float64(g.Tilesize) / g.Zoom
+			viewH := float64(g.World.H) * float64(g.Tilesize) / g.Zoom
+			newViewW := float64(g.World.W) * float64(g.Tilesize) / newZoom
+			newViewH := float64(g.World.H) * float64(g.Tilesize) / newZoom
+			scrollmodX := int((viewW - newViewW) * 0.5)
+			scrollmodY := int((viewH - newViewH) * 0.5)
+
+			g.ScrollX -= scrollmodX
+			g.ScrollY -= scrollmodY
+			g.Zoom = newZoom
 		}
 	} else if ebiten.IsKeyPressed(ebiten.KeyShift) {
 		g.ScrollX += int(wY * float64(g.Tilesize))

@@ -13,7 +13,8 @@
 - [x] add zoom awareness for scroll
 - [x] adjust scroll and zoom
 - [x] add a cap to scroll and zoom
-- [ ] make zoom zoom in on cursor position
+- [x] make zoom zoom in on view center
+- [ ] make update math natively with floats
 - [ ] add team resources
 - [ ] add pathfinding
 - [ ] add procedural world generation
