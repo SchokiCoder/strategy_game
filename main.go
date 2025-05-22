@@ -77,17 +77,19 @@ func NewWorld(
 type StratGame struct {
 	BiomeImg      [FieldBiomeCount]*ebiten.Image
 	Scroll        bool
-	ScrollOldX    int
-	ScrollOldY    int
-	ScrollOriginX int
-	ScrollOriginY int
-	ScrollX       int
-	ScrollY       int
+	ScrollOldX    float64
+	ScrollOldY    float64
+	ScrollOriginX float64
+	ScrollOriginY float64
+	ScrollX       float64
+	ScrollY       float64
 	TeamColor     []color.Color
 	TerrImg       *ebiten.Image
-	Tilesize      int
+	Tilesize      float64
 	World         World
 	WorldImg      *ebiten.Image
+	WorldImgW     float64
+	WorldImgH     float64
 	Zoom          float64
 }
 
@@ -153,14 +155,16 @@ func (g StratGame) Draw(
 			}
 		}
 	}
-	opt.GeoM.Scale(float64(g.Tilesize), float64(g.Tilesize))
+	opt.GeoM.Scale(g.Tilesize, g.Tilesize)
 	g.WorldImg.DrawImage(g.TerrImg, &opt)
 
 	for x := 0; x < g.World.W; x++ {
 		vector.StrokeLine(
 			g.WorldImg,
-			float32(x * g.Tilesize), 0,
-			float32(x * g.Tilesize), float32(g.World.H * g.Tilesize),
+			float32(float64(x) * g.Tilesize),
+			0,
+			float32(float64(x) * g.Tilesize),
+			float32(float64(g.World.H) * g.Tilesize),
 			1,
 			color.RGBA{R: 0x69, G: 0x69, B: 0x69, A: 0xFF},
 			false)
@@ -168,8 +172,10 @@ func (g StratGame) Draw(
 	for y := 0; y < g.World.H; y++ {
 		vector.StrokeLine(
 			g.WorldImg,
-			0, float32(y * g.Tilesize),
-			float32(g.World.W * g.Tilesize), float32(y * g.Tilesize),
+			0,
+			float32(float64(y) * g.Tilesize),
+			float32(float64(g.World.W) * g.Tilesize),
+			float32(float64(y) * g.Tilesize),
 			1,
 			color.RGBA{R: 0x69, G: 0x69, B: 0x69, A: 0xFF},
 			false)
@@ -179,14 +185,14 @@ func (g StratGame) Draw(
 		for y := 0; y < g.World.H; y++ {
 			opt.GeoM.Reset()
 			opt.GeoM.Translate(
-				float64(x * g.Tilesize + g.Tilesize / 2 - 1),
-				float64(y * g.Tilesize))
+				float64(x) * g.Tilesize + g.Tilesize / 2.0 - 1.0,
+				float64(y) * g.Tilesize)
 			g.WorldImg.DrawImage(g.BiomeImg[g.World.Biome[x][y]], &opt)
 		}
 	}
 
 	opt.GeoM.Reset()
-	opt.GeoM.Translate(float64(g.ScrollX), float64(g.ScrollY))
+	opt.GeoM.Translate(g.ScrollX, g.ScrollY)
 	opt.GeoM.Scale(g.Zoom, g.Zoom)
 	screen.DrawImage(g.WorldImg, &opt)
 }
@@ -199,9 +205,9 @@ func (g* StratGame) GenerateSkirmish(
 
 	g.World = NewWorld(w, h)
 	g.TerrImg = ebiten.NewImage(w, h)
-	g.WorldImg = ebiten.NewImage(
-		g.Tilesize * g.World.W,
-		g.Tilesize * g.World.H)
+	g.WorldImgW = g.Tilesize * float64(g.World.W)
+	g.WorldImgH = g.Tilesize * float64(g.World.H)
+	g.WorldImg = ebiten.NewImage(int(g.WorldImgW), int(g.WorldImgH))
 
 	for x := 1; x < w - 1; x++ {
 		for y := 1; y < h - 1; y++ {
@@ -229,9 +235,15 @@ func (g* StratGame) GenerateSkirmish(
 }
 
 func (g StratGame) Layout(
-	outsideWidth, outsideHeight int,
+	_, _ int,
 ) (int, int) {
-	return g.Tilesize * g.World.W, g.Tilesize * g.World.H
+	return -1, -1
+}
+
+func (g StratGame) LayoutF(
+	outsideWidth, outsideHeight float64,
+) (float64, float64) {
+	return g.WorldImgW, g.WorldImgH
 }
 
 func (g *StratGame) Update(
@@ -245,7 +257,8 @@ func (g *StratGame) Update(
 		minZoom = mwheelOffsetZoomMod * 4
 	)
 
-	var mX, mY = ebiten.CursorPosition()
+	_mX, _mY := ebiten.CursorPosition()
+	mX, mY := float64(_mX), float64(_mY)
 
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		g.ScrollOriginX = mX
@@ -266,8 +279,8 @@ func (g *StratGame) Update(
 	}
 
 	if g.Scroll {
-		g.ScrollX = g.ScrollOldX + int(float64(mX - g.ScrollOriginX) / g.Zoom)
-		g.ScrollY = g.ScrollOldY + int(float64(mY - g.ScrollOriginY) / g.Zoom)
+		g.ScrollX = g.ScrollOldX + (mX - g.ScrollOriginX) / g.Zoom
+		g.ScrollY = g.ScrollOldY + (mY - g.ScrollOriginY) / g.Zoom
 	}
 
 	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
@@ -281,34 +294,32 @@ func (g *StratGame) Update(
 		if newZoom < minZoom ||
 		   newZoom > maxZoom {
 		} else {
-			viewW := float64(g.World.W) * float64(g.Tilesize) / g.Zoom
-			viewH := float64(g.World.H) * float64(g.Tilesize) / g.Zoom
-			newViewW := float64(g.World.W) * float64(g.Tilesize) / newZoom
-			newViewH := float64(g.World.H) * float64(g.Tilesize) / newZoom
-			scrollmodX := int((viewW - newViewW) * 0.5)
-			scrollmodY := int((viewH - newViewH) * 0.5)
+			viewW := g.WorldImgW / g.Zoom
+			viewH := g.WorldImgH / g.Zoom
+			newViewW := g.WorldImgW / newZoom
+			newViewH := g.WorldImgH / newZoom
+			scrollmodX := (viewW - newViewW) * 0.5
+			scrollmodY := (viewH - newViewH) * 0.5
 
 			g.ScrollX -= scrollmodX
 			g.ScrollY -= scrollmodY
 			g.Zoom = newZoom
 		}
 	} else if ebiten.IsKeyPressed(ebiten.KeyShift) {
-		g.ScrollX += int(wY * float64(g.Tilesize))
+		g.ScrollX += wY * g.Tilesize
 	} else {
-		g.ScrollY += int(wY * float64(g.Tilesize))
-		g.ScrollX += int(wX * float64(g.Tilesize))
+		g.ScrollY += wY * g.Tilesize
+		g.ScrollX += wX * g.Tilesize
 	}
 
-	scrollcapX := int(float64(g.World.W) * float64(g.Tilesize) / g.Zoom -
-		float64(g.World.W) * float64(g.Tilesize))
+	scrollcapX := g.WorldImgW / g.Zoom - g.WorldImgW
 	if g.ScrollX < scrollcapX {
 		g.ScrollX = scrollcapX
 	} else if g.ScrollX > 0 {
 		g.ScrollX = 0
 	}
 
-	scrollcapY := int(float64(g.World.H) * float64(g.Tilesize) / g.Zoom -
-		float64(g.World.H) * float64(g.Tilesize))
+	scrollcapY := g.WorldImgH / g.Zoom - g.WorldImgH
 	if g.ScrollY < scrollcapY {
 		g.ScrollY = scrollcapY
 	} else if g.ScrollY > 0 {
@@ -332,7 +343,7 @@ func main(
 	)
 
 	ebiten.SetWindowTitle(AppName)
-	ebiten.SetWindowSize(640, 480)
+	ebiten.SetWindowSize(512, 512)
 	ebiten.SetTPS(30)
 
 	g.GenerateSkirmish()

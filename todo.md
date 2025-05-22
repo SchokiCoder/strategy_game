@@ -15,7 +15,10 @@
 - [x] add a cap to scroll and zoom
 - [x] make zoom zoom in on view center
 - [x] update scroll cap to new GeoM manipulation order
-- [ ] make update math natively with floats
+- [x] replace ints for graphical values with floats
+This fixes imprecision for zoom zooming in on view center.
+It would otherwise slowly creep up-left over zooms.
+It also lets Game.update look better.
 - [ ] add team resources
 - [ ] add pathfinding
 - [ ] add procedural world generation
