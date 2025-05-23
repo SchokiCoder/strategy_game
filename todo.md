@@ -19,7 +19,7 @@
 This fixes imprecision for zoom zooming in on view center.
 It would otherwise slowly creep up-left over zooms.
 It also lets Game.update look better.
-- [ ] add team resources
+- [x] add team resources
 - [ ] add pathfinding
 - [ ] add procedural world generation
 - [ ] add unit movement

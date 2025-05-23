@@ -5,13 +5,18 @@
 package main
 
 import (
+	"bytes"
 	"embed"
+	"fmt"
 	"image/color"
 	_ "image/png"
+
+	"golang.org/x/text/language"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
@@ -76,6 +81,10 @@ func NewWorld(
 
 type StratGame struct {
 	BiomeImg      [FieldBiomeCount]*ebiten.Image
+	Font          text.GoTextFace
+	FoodImg       *ebiten.Image
+	GoldImg       *ebiten.Image
+	PopCapImg     *ebiten.Image
 	Scroll        bool
 	ScrollOldX    float64
 	ScrollOldY    float64
@@ -84,8 +93,13 @@ type StratGame struct {
 	ScrollX       float64
 	ScrollY       float64
 	TeamColor     []color.Color
+	TeamFood      []int
+	TeamGold      []int
+	TeamPopCap    []int
+	TeamWood      []int
 	TerrImg       *ebiten.Image
 	Tilesize      float64
+	WoodImg       *ebiten.Image
 	World         World
 	WorldImg      *ebiten.Image
 	WorldImgW     float64
@@ -96,7 +110,8 @@ type StratGame struct {
 func NewStratGame(
 ) StratGame {
 	var (
-		i FieldBiome
+		i   FieldBiome
+		err error
 		ret = StratGame{
 			TeamColor: []color.Color{
 				color.RGBA{
@@ -118,18 +133,72 @@ func NewStratGame(
 					A: 0xFF,
 				},
 			},
+			TeamFood: []int{
+				0,
+				InitFood,
+				InitFood,
+			},
+			TeamGold: []int{
+				0,
+				InitGold,
+				InitGold,
+			},
+			TeamPopCap: []int{
+				0,
+				InitPopCap,
+				InitPopCap,
+			},
+			TeamWood: []int{
+				0,
+				InitWood,
+				InitWood,
+			},
 			Tilesize: 16,
 			Zoom: 1.0,
 		}
 	)
 
+	ret.Font = text.GoTextFace{
+		Source: dejavusansmonoSource,
+		Direction: text.DirectionLeftToRight,
+		Size: ret.Tilesize - 2,
+		Language: language.English,
+	}
+
+	ret.FoodImg, _, err = ebitenutil.NewImageFromFileSystem(
+		images,
+		"assets/Food.png")
+	if err != nil {
+		panic(err)
+	}
+
+	ret.GoldImg, _, err = ebitenutil.NewImageFromFileSystem(
+		images,
+		"assets/Gold.png")
+	if err != nil {
+		panic(err)
+	}
+
+	ret.PopCapImg, _, err = ebitenutil.NewImageFromFileSystem(
+		images,
+		"assets/PopCap.png")
+	if err != nil {
+		panic(err)
+	}
+
+	ret.WoodImg, _, err = ebitenutil.NewImageFromFileSystem(
+		images,
+		"assets/Wood.png")
+	if err != nil {
+		panic(err)
+	}
+
 	for i = Sea; i <= Plains; i++ {
 		ret.BiomeImg[i] = ebiten.NewImage(1, 1)
 	}
 	for ; i < FieldBiomeCount; i++ {
-		var err error
 		ret.BiomeImg[i], _, err = ebitenutil.NewImageFromFileSystem(
-			assets,
+			images,
 			"assets/" + i.String() + ".png")
 		if err != nil {
 			panic(err)
@@ -142,7 +211,10 @@ func NewStratGame(
 func (g StratGame) Draw(
 	screen *ebiten.Image,
 ) {
-	var opt ebiten.DrawImageOptions
+	var (
+		edio ebiten.DrawImageOptions
+		tdo  text.DrawOptions
+	)
 
 	for x := 0; x < g.World.W; x++ {
 		for y := 0; y < g.World.H; y++ {
@@ -155,8 +227,8 @@ func (g StratGame) Draw(
 			}
 		}
 	}
-	opt.GeoM.Scale(g.Tilesize, g.Tilesize)
-	g.WorldImg.DrawImage(g.TerrImg, &opt)
+	edio.GeoM.Scale(g.Tilesize, g.Tilesize)
+	g.WorldImg.DrawImage(g.TerrImg, &edio)
 
 	for x := 0; x < g.World.W; x++ {
 		vector.StrokeLine(
@@ -164,7 +236,7 @@ func (g StratGame) Draw(
 			float32(float64(x) * g.Tilesize),
 			0,
 			float32(float64(x) * g.Tilesize),
-			float32(float64(g.World.H) * g.Tilesize),
+			float32(g.WorldImgH),
 			1,
 			color.RGBA{R: 0x69, G: 0x69, B: 0x69, A: 0xFF},
 			false)
@@ -174,7 +246,7 @@ func (g StratGame) Draw(
 			g.WorldImg,
 			0,
 			float32(float64(y) * g.Tilesize),
-			float32(float64(g.World.W) * g.Tilesize),
+			float32(g.WorldImgW),
 			float32(float64(y) * g.Tilesize),
 			1,
 			color.RGBA{R: 0x69, G: 0x69, B: 0x69, A: 0xFF},
@@ -183,18 +255,55 @@ func (g StratGame) Draw(
 
 	for x := 0; x < g.World.W; x++ {
 		for y := 0; y < g.World.H; y++ {
-			opt.GeoM.Reset()
-			opt.GeoM.Translate(
+			edio.GeoM.Reset()
+			edio.GeoM.Translate(
 				float64(x) * g.Tilesize + g.Tilesize / 2.0 - 1.0,
 				float64(y) * g.Tilesize)
-			g.WorldImg.DrawImage(g.BiomeImg[g.World.Biome[x][y]], &opt)
+			g.WorldImg.DrawImage(g.BiomeImg[g.World.Biome[x][y]], &edio)
 		}
 	}
 
-	opt.GeoM.Reset()
-	opt.GeoM.Translate(g.ScrollX, g.ScrollY)
-	opt.GeoM.Scale(g.Zoom, g.Zoom)
-	screen.DrawImage(g.WorldImg, &opt)
+	edio.GeoM.Reset()
+	edio.GeoM.Translate(g.ScrollX, g.ScrollY)
+	edio.GeoM.Scale(g.Zoom, g.Zoom)
+	edio.GeoM.Translate(0, g.Tilesize)
+	screen.DrawImage(g.WorldImg, &edio)
+
+	vector.DrawFilledRect(
+		screen,
+		0,
+		0,
+		float32(g.WorldImgW),
+		float32(g.Tilesize),
+		color.RGBA{0x11, 0x11, 0x11, 0xFF},
+		true)
+
+	drawCursor := 0.0
+	headerImgs := [...]*ebiten.Image{
+		g.PopCapImg,
+		g.FoodImg,
+		g.GoldImg,
+		g.WoodImg,
+	}
+	headerTxts := [...]string{
+		fmt.Sprintf("%v/%v", 0, g.TeamPopCap[1]),
+		fmt.Sprintf("%v", g.TeamFood[1]),
+		fmt.Sprintf("%v", g.TeamGold[1]),
+		fmt.Sprintf("%v", g.TeamWood[1]),
+	}
+
+	for i := 0; i < len(headerImgs); i++ {
+		edio.GeoM.Reset()
+		edio.GeoM.Translate(drawCursor, 0)
+		screen.DrawImage(headerImgs[i], &edio)
+		drawCursor += g.Tilesize + 1
+
+		tdo.GeoM.Reset()
+		tdo.GeoM.Translate(drawCursor, 1)
+		text.Draw(screen, headerTxts[i], &g.Font, &tdo)
+		tw, _ := text.Measure(headerTxts[i], &g.Font, 0)
+		drawCursor += tw + 10
+	}
 }
 
 func (g* StratGame) GenerateSkirmish(
@@ -243,7 +352,7 @@ func (g StratGame) Layout(
 func (g StratGame) LayoutF(
 	outsideWidth, outsideHeight float64,
 ) (float64, float64) {
-	return g.WorldImgW, g.WorldImgH
+	return g.WorldImgW, g.WorldImgH + g.Tilesize
 }
 
 func (g *StratGame) Update(
@@ -329,12 +438,34 @@ func (g *StratGame) Update(
 	return nil
 }
 
+const (
+	InitFood = 3
+	InitGold = 3
+	InitWood = 3
+	InitPopCap = 5
+)
+
 var (
 	AppName string
 )
 
-//go:embed assets
-var assets embed.FS
+//go:embed assets/DejaVuSansMono.ttf
+var dejavusansmonoTTF []byte
+
+var dejavusansmonoSource *text.GoTextFaceSource
+
+func init(
+) {
+	s, err := text.NewGoTextFaceSource(
+		bytes.NewReader(dejavusansmonoTTF))
+	if err != nil {
+		panic(err)
+	}
+	dejavusansmonoSource = s
+}
+
+//go:embed assets/*.png
+var images embed.FS
 
 func main(
 ) {
@@ -343,10 +474,9 @@ func main(
 	)
 
 	ebiten.SetWindowTitle(AppName)
-	ebiten.SetWindowSize(512, 512)
+	ebiten.SetWindowSize(512, 512 + int(g.Tilesize * 2))
 	ebiten.SetTPS(30)
 
 	g.GenerateSkirmish()
 	ebiten.RunGame(&g)
 }
-
